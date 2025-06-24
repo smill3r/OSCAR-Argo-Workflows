@@ -1,0 +1,21 @@
+functions:
+  oscar:
+    - oscar-cluster:
+        name: sentiment-analysis-roberta-notify
+        memory: 6Gi
+        cpu: '1.0'
+        image: o4tmeal/roberta-sentiment-analysis-notify:latest
+        script: script.sh
+        input:
+          - storage_provider: minio.default
+            path: sentiment-analysis-roberta-notify/input
+        output:
+          - storage_provider: minio.default
+            path: sentiment-analysis-roberta-notify/output
+        environment:
+          secrets:
+            argo_token: ""
+            server_host: ""
+            access_key: ""
+            secret_key: ""
+            secure: "false"
