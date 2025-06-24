@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: commit-result-template
+spec:
+  templates:
+    - name: commit-to-github
+      inputs:
+        artifacts:
+          - name: csv-artifact
+            path: /mnt/data/myfile.csv
+        parameters:
+          - name: repo
+          - name: branch
+          - name: commit-message
+          - name: github-username
+          - name: file-target-path
+      container:
+        image: alpine/git
+        env:
+          - name: GITHUB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: github-secret
+                key: GITHUB_TOKEN
+        command: [ sh, -c ]
+        args:
+          - |
+            git config --global user.name "{{inputs.parameters.github-username}}"
+            git config --global user.email "{{inputs.parameters.github-username}}@users.noreply.github.com"
+
+            git clone https://$GITHUB_TOKEN@github.com/{{inputs.parameters.repo}} repo
+            cd repo
+
+            cp /mnt/data/myfile.csv "{{inputs.parameters.file-target-path}}"
+
+            git add "{{inputs.parameters.file-target-path}}"
+            git commit -m "{{inputs.parameters.commit-message}}"
+            git push origin "{{inputs.parameters.branch}}"

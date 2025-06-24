@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: collect-data-template
+spec:
+  templates:
+    - name: reddit-collector
+      inputs:
+        parameters:
+          - name: config
+          - name: input
+          - name: output
+          - name: workflowName
+      container:
+        image: bitnami/minio-client:latest
+        envFrom:
+          - secretRef:
+              name: minio-secret-test-cluster
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            mc alias set miniosrv "$MINIO_SERVER_HOST" "$MINIO_SERVER_ACCESS_KEY" "$MINIO_SERVER_SECRET_KEY"
+            workflow_id="{{inputs.parameters.workflowName}}"
+            # Guardar el parámetro config como archivo
+            echo '{{inputs.parameters.config}}' > config.json
+            # Subir a MinIO
+            mc cp config.json "miniosrv/{{inputs.parameters.input}}/${workflow_id}.json"
+            
+            # Esperar a que aparezca el archivo de salida
+            output_file="miniosrv/{{inputs.parameters.output}}/${workflow_id}.csv"
+            while ! mc stat "$output_file"; do
+              echo "Waiting for file $output_file to be created..."
+              sleep 30
+            done
+            echo "File $output_file detected."

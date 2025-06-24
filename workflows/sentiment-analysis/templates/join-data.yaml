@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: join-data-sync-template
+spec:
+  templates:
+    - name: join-csv-sync
+      inputs:
+        parameters:
+          - name: file-list
+          - name: output
+          - name: result-file-name
+      outputs:
+        parameters:
+          - name: output-file-path
+            valueFrom:
+              path: /tmp/output-file-path.txt
+      container:
+        image: o4tmeal/jq:latest
+        env:
+          - name: JOIN_CSV_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: join-csv-token
+                key: token
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            sleep 60
+            file_list='{{inputs.parameters.file-list}}'
+
+            jq -n \
+            --argjson file_list "$file_list" \
+            --arg output_path "{{inputs.parameters.output}}" \
+            --arg result_file_name "{{inputs.parameters.result-file-name}}" \
+            '{
+              file_list: $file_list,
+              output_path: $output_path,
+              result_file_name: $result_file_name
+            }' > /tmp/config.json
+            
+            response=$(curl -X POST "http://oscar.oscar.svc.cluster.local:8080/run/join-csv-sync" \
+              -H "Authorization: Bearer $JOIN_CSV_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d @/tmp/config.json)
+            
+            echo "$response" | jq '.output_file' > /tmp/output-file-path.txt
+            

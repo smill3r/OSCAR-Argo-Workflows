@@ -1,0 +1,86 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: sentiment-analysis-notify-template
+spec:
+  templates:
+    - name: sentiment-analysis-notify
+      inputs:
+        parameters:
+          - name: source
+          - name: input
+          - name: output
+          - name: workflow-name
+      outputs:
+        parameters:
+          - name: output-file-path
+            valueFrom:
+              parameter: "{{steps.activate.outputs.parameters.output-file-path}}"
+      steps:
+        - - name: activate
+            template: activate-service
+            arguments:
+              parameters:
+                - name: source
+                  value: "{{inputs.parameters.source}}"
+                - name: input
+                  value: "{{inputs.parameters.input}}"
+                - name: output
+                  value: "{{inputs.parameters.output}}"
+                - name: workflow-name
+                  value: "{{inputs.parameters.workflow-name}}"
+        - - name: wait
+            template: suspend-until-done
+            arguments:
+              parameters:
+                - name: taskId
+                  value: "{{inputs.parameters.source}}"
+            continueOn:
+              failed: true
+
+    - name: activate-service
+      inputs:
+        parameters:
+          - name: source
+          - name: input
+          - name: output
+          - name: workflow-name
+      outputs:
+        parameters:
+          - name: output-file-path
+            valueFrom:
+              path: /tmp/output-file-path.txt
+      container:
+        image: bitnami/minio-client:latest
+        envFrom:
+          - secretRef:
+              name: minio-secret-test-cluster
+        command: [ "/bin/sh", "-c" ]
+        args:
+          - |
+            cat <<EOF > /tmp/config.json
+            {
+              "input_path": "{{inputs.parameters.source}}",
+              "analysis_column": "comment",
+              "notify": {
+                "success_endpoint": "https://argo-server.argo.svc.cluster.local:2746/api/v1/workflows/argo/{{inputs.parameters.workflow-name}}/resume",
+                "error_endpoint": "https://argo-server.argo.svc.cluster.local:2746/api/v1/workflows/argo/{{inputs.parameters.workflow-name}}/stop",
+                "data": {
+                  "namespace": "argo",
+                  "name": "{{inputs.parameters.workflow-name}}",
+                  "nodeFieldSelector": "inputs.parameters.taskId.value={{inputs.parameters.source}}"
+                }
+              }
+            }
+            EOF
+            
+            mc alias set miniosrv "$MINIO_SERVER_HOST" "$MINIO_SERVER_ACCESS_KEY" "$MINIO_SERVER_SECRET_KEY"
+            basename=$(basename "{{inputs.parameters.source}}" | cut -f 1 -d '.')
+            mc cp /tmp/config.json "miniosrv/{{inputs.parameters.input}}/$basename.json"
+            echo "{{inputs.parameters.output}}/$basename.csv" > /tmp/output-file-path.txt
+
+    - name: suspend-until-done
+      inputs:
+        parameters:
+          - name: taskId
+      suspend: {}

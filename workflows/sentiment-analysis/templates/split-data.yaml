@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: split-data-sync-template
+spec:
+  templates:
+    - name: split-csv-sync
+      inputs:
+        parameters:
+          - name: input
+          - name: output
+      outputs:
+        parameters:
+          - name: output-file-names
+            valueFrom:
+              path: /tmp/output-file-names.txt
+      container:
+        image: o4tmeal/jq:latest
+        env:
+          - name: SPLIT_CSV_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: split-csv-token
+                key: token
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            cat <<EOF > /tmp/config.json
+            {
+              "input_path": "{{inputs.parameters.input}}",
+              "output_path": "{{inputs.parameters.output}}",
+              "records_per_file": 200
+            }
+            EOF
+            
+            response=$(curl -X POST "http://oscar.oscar.svc.cluster.local:8080/run/split-csv-sync" \
+              -H "Authorization: Bearer $SPLIT_CSV_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d @/tmp/config.json)
+          
+            # Extract output_files from the JSON response
+            echo "$response" | jq '.output_files' > /tmp/output-file-names.txt

@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: download-result-template
+spec:
+  templates:
+    - name: download-result
+      inputs:
+        parameters:
+          - name: source
+      outputs:
+        artifacts:
+          - name: result-file
+            path: /tmp/comments_with_sentiment.csv
+      container:
+        image: bitnami/minio-client:latest
+        envFrom:
+          - secretRef:
+              name: minio-secret-test-cluster
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            mc alias set miniosrv "$MINIO_SERVER_HOST" "$MINIO_SERVER_ACCESS_KEY" "$MINIO_SERVER_SECRET_KEY"
+            mc cp "miniosrv/{{inputs.parameters.source}}" /tmp/comments_with_sentiment.csv
