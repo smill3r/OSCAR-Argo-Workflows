@@ -1,0 +1,5 @@
+{
+  "input_path": "reddit-collector/output/10501c35-4fa5-4986-afa3-be895ec30bfc.csv",
+  "output_path": "sentiment-analyis-workflow-runs/split-output/test-local-3",
+  "records_per_file": 100
+}
