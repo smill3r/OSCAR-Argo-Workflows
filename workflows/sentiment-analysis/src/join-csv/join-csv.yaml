@@ -1,0 +1,17 @@
+functions:
+  oscar:
+    - oscar-cluster:
+        name: join-csv-sync
+        memory: 1Gi
+        cpu: '1.0'
+        image: o4tmeal/join-csv:latest
+        script: script.sh
+        log_level: CRITICAL
+        environment:
+          Variables:
+            INPUT_TYPE: json
+          secrets:
+            server_host: ""
+            access_key: ""
+            secret_key: ""
+            secure: "false"

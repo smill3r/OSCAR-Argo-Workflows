@@ -1,0 +1,10 @@
+{
+  "file_list": [
+    "sentiment-analyis-workflow-runs/split-output/sentiment-analysis-workflow-test-7/sentiment-analysis-workflow-test-7-1.csv",
+    "sentiment-analyis-workflow-runs/split-output/sentiment-analysis-workflow-test-7/sentiment-analysis-workflow-test-7-2.csv",
+    "sentiment-analyis-workflow-runs/split-output/sentiment-analysis-workflow-test-7/sentiment-analysis-workflow-test-7-3.csv",
+    "sentiment-analyis-workflow-runs/split-output/sentiment-analysis-workflow-test-7/sentiment-analysis-workflow-test-7-4.csv"
+  ],
+  "output_path": "sentiment-analyis-workflow-runs/join-output/test-local",
+  "result_file_name": "sentiment-analysis-workflow-test-7.csv"
+}
