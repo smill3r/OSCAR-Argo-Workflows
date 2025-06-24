@@ -3,7 +3,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   # Prefijo para el nombre del workflow; Argo generará un sufijo automáticamente
-  generateName: image-processing-
+  generateName: grayify-dogs-
 spec:
   entrypoint: main
   # Cuenta de servicio utilizada para ejecutar el workflow
