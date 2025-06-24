@@ -1,0 +1,46 @@
+
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  # Prefijo para el nombre del workflow; Argo generará un sufijo automáticamente
+  generateName: image-processing-
+spec:
+  entrypoint: main
+  # Cuenta de servicio utilizada para ejecutar el workflow
+  serviceAccountName: argo-user
+  templates:
+    # Plantilla principal que contiene los pasos del workflow
+    - name: main
+      steps:
+        # Paso 1: Copiar archivos a la carpeta de entrada de grayify
+        - - name: copy-to-grayify
+            templateRef:
+              # Referencia a la plantilla de copia de archivos
+              name: copy-files-template
+              template: copy-files
+            arguments:
+              parameters:
+                # Carpeta de origen que contiene los archivos de entrada
+                - name: source
+                  value: "test-workflow/in/test-dogs"
+                # Carpeta de destino donde se copiarán los archivos
+                - name: target
+                  value: "grayify/in/"
+
+        # Paso 2: Esperar a que se complete el proceso de grayify
+        - - name: wait-for-grayify
+            templateRef:
+              # Referencia a la plantilla para esperar archivos
+              name: wait-for-files-template
+              template: wait-for-files
+            arguments:
+              parameters:
+                # Carpeta de origen a monitorear
+                - name: source-folder
+                  value: "test-workflow/in/test-dogs"
+                # Carpeta de destino donde se verificarán los archivos procesados
+                - name: target-folder
+                  value: "grayify/out/"
+                # Tiempo de espera máximo para el proceso (en segundos)
+                - name: timeout
+                  value: "1300"
