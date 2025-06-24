@@ -1,0 +1,44 @@
+# wait-for-files-template.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: wait-for-files-template
+spec:
+  templates:
+    - name: wait-for-files
+      inputs:
+        parameters:
+          - name: source-folder
+          - name: target-folder
+          - name: timeout
+      container:
+        image: bitnami/minio-client:latest
+        envFrom:
+          - secretRef:
+              name: minio-secret
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            mc alias set miniosrv "$MINIO_SERVER_HOST" "$MINIO_SERVER_ACCESS_KEY" "$MINIO_SERVER_SECRET_KEY" --insecure
+            SOURCE_FILES=$(mc ls "miniosrv/{{inputs.parameters.source-folder}}" | awk '{print $NF}')
+            SOURCE_COUNT=$(echo "$SOURCE_FILES" | wc -l)
+            START_TIME=$(date +%s)
+            TIMEOUT={{inputs.parameters.timeout}}
+            while true; do
+              TARGET_FILES=$(mc ls "miniosrv/{{inputs.parameters.target-folder}}" | awk '{print $NF}')
+              MISSING_FILES=0
+              for file in $SOURCE_FILES; do
+                if ! echo "$TARGET_FILES" | grep -q "^$file$"; then
+                  MISSING_FILES=$((MISSING_FILES + 1))
+                fi
+              done
+              if [ "$MISSING_FILES" -eq 0 ]; then
+                echo "All $SOURCE_COUNT files detected in target location"
+                exit 0
+              fi
+              if [ $(($(date +%s) - START_TIME)) -gt $TIMEOUT ]; then
+                echo "Timeout: Found $((SOURCE_COUNT - MISSING_FILES))/$SOURCE_COUNT files after $TIMEOUT seconds"
+                exit 1
+              fi
+              sleep 30
+            done

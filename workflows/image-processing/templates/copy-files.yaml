@@ -1,0 +1,23 @@
+# copy-files-template.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: copy-files-template
+spec:
+  templates:
+    - name: copy-files
+      inputs:
+        parameters:
+          - name: source
+          - name: target
+      container:
+        image: bitnami/minio-client:latest
+        envFrom:
+          - secretRef:
+              name: minio-secret
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            mc alias set miniosrv "$MINIO_SERVER_HOST" "$MINIO_SERVER_ACCESS_KEY" "$MINIO_SERVER_SECRET_KEY"
+            mc cp --recursive "miniosrv/{{inputs.parameters.source}}" "miniosrv/{{inputs.parameters.target}}"
+            echo "Copied $(mc ls miniosrv/{{inputs.parameters.source}} | wc -l) files"
