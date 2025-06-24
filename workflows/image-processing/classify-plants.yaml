@@ -66,7 +66,7 @@ spec:
             arguments:
               parameters:
                 - name: source-folder
-                  value: "test-workflow/in"
+                  value: "test-workflow/in/test-plants"
                 - name: target-folder
                   value: "plants/out/"
                 - name: timeout
