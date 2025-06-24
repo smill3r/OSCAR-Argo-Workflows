@@ -1,0 +1,22 @@
+functions:
+  oscar:
+    - oscar-cluster:
+        name: reddit-collector
+        memory: 1Gi
+        cpu: '1.0'
+        image: o4tmeal/reddit-collector:latest
+        script: script.sh
+        log_level: CRITICAL
+        environment:
+          Variables:
+            INPUT_TYPE: json
+          secrets:
+            reddit_client_id: ""
+            reddit_client_secret: ""
+            reddit_user_agent: "sentiment_analysis_collector"
+        input:
+          - storage_provider: minio.default
+            path: reddit-collector/input
+        output:
+          - storage_provider: minio.default
+            path: reddit-collector/output
