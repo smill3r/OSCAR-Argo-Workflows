@@ -1,0 +1,110 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: sentiment-analysis-workflow-
+spec:
+  entrypoint: main
+  serviceAccountName: argo-user
+  arguments:
+    parameters:
+      - name: config
+        value: |
+          {
+            "subreddits": ["politics"],
+            "keywords": ["china"],
+            "limit": 1
+          }
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: data-collection-task
+            templateRef:
+              name: collect-data-template
+              template: reddit-collector
+            arguments:
+              parameters:
+                - name: config
+                  value: "{{workflow.parameters.config}}"
+                - name: input
+                  value: "reddit-collector/input"
+                - name: output
+                  value: "reddit-collector/output"
+                - name: workflowName
+                  value: "{{workflow.name}}"
+
+          - name: data-split-task
+            dependencies: [data-collection-task]
+            templateRef:
+              name: split-data-sync-template
+              template: split-csv-sync
+            arguments:
+              parameters:
+                - name: input
+                  value: "reddit-collector/output/{{workflow.name}}.csv"
+                - name: output
+                  value: "sentiment-analyis-workflow-runs/split-output/{{workflow.name}}"
+
+          - name: sentiment-analysis-notify-fanout
+            dependencies: [data-split-task]
+            templateRef:
+              name: sentiment-analysis-notify-template
+              template: sentiment-analysis-notify
+            arguments:
+              parameters:
+                - name: source
+                  value: "{{item}}"
+                - name: input
+                  value: "sentiment-analysis-roberta-notify/input/{{workflow.name}}"
+                - name: output
+                  value: "sentiment-analysis-roberta-notify/output"
+                - name: workflow-name
+                  value: "{{workflow.name}}"
+            withParam: "{{tasks.data-split-task.outputs.parameters.output-file-names}}"
+            continueOn:
+              failed: true
+
+          - name: data-join-task
+            dependencies: [sentiment-analysis-notify-fanout]
+            templateRef:
+              name: join-data-sync-template
+              template: join-csv-sync
+            arguments:
+              parameters:
+                - name: file-list
+                  value: "{{tasks.sentiment-analysis-notify-fanout.outputs.parameters.output-file-path}}"
+                - name: output
+                  value: "sentiment-analyis-workflow-runs/joined-output/{{workflow.name}}"
+                - name: result-file-name
+                  value: "{{workflow.name}}-result.csv"
+
+          - name: get-result-file
+            dependencies: [data-join-task]
+            templateRef:
+              name: download-result-template
+              template: download-result
+            arguments:
+              parameters:
+                - name: source
+                  value: "{{tasks.data-join-task.outputs.parameters.output-file-path}}"
+
+          - name: commit-to-github
+            dependencies: [get-result-file]
+            templateRef:
+              name: commit-result-template
+              template: commit-to-github
+            arguments:
+              artifacts:
+                - name: csv-artifact
+                  from: "{{tasks.get-result-file.outputs.artifacts.result-file}}"
+              parameters:
+                - name: repo
+                  value: "o4tmeal/sentiment-analysis-dashboard"
+                - name: branch
+                  value: "main"
+                - name: commit-message
+                  value: "Update sentiment analysis results for {{workflow.name}}"
+                - name: github-username
+                  value: "o4tmeal"
+                - name: file-target-path
+                  value: "comments_with_sentiment.csv"
