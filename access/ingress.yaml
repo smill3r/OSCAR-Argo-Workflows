@@ -1,0 +1,29 @@
+# Configuración del Ingress utilizada para dar acceso al dashboard de Argo Workflows dentro del clúster
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argo-server
+  namespace: argo
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  labels:
+    app: argo-workflows
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: test.foo.net # Reemplazar con tu dominio
+      http:
+        paths:
+          - path: /
+            pathType: Prefix 
+            backend:
+              service:
+                name: argo-server # Nombre del servicio de Argo Server
+                port:
+                  number: 2746 # Puerto interno donde Argo escucha por defecto
+  tls:
+    - hosts:
+        - test.foo.net # Reemplazar con tu dominio
+      secretName: test.foo.net # Reemplazar con el nombre del secreto que contiene el certificado TLS

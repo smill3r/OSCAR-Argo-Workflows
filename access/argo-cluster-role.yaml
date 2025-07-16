@@ -1,0 +1,13 @@
+# Configuración del rol para ser utilizado dentro del clúster para la ejecución de workflows
+# Más información: https://argo-workflows.readthedocs.io/en/latest/workflow-rbac/
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argo-user-role
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflowtemplates", "workflows", "workflowtaskresults"]
+    verbs: ["get", "list", "watch", "create", "update", "delete", "patch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
